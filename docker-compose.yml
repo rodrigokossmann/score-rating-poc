@@ -1,0 +1,96 @@
+version: "3.8"
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    networks:
+      - broker-kafka
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    networks:
+      - broker-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    networks:
+      - broker-kafka
+    depends_on:
+      - kafka
+    ports:
+    - 19000:9000
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+
+  redis:
+    image: redis:latest
+    networks:
+      - broker-redis
+    command: redis-server --requirepass SocialRating!
+    ports:
+      - "6379:6379"
+
+  score-data-collector:
+    container_name: score-data-collector
+    build:
+      context: score-data-collector
+      dockerfile: Dockerfile
+    image: score-data-collector:latest
+    ports:
+      - 8080:8080
+    depends_on:
+      - kafka
+    networks:
+      - broker-kafka
+    environment:
+      SPRING_KAFKA_PRODUCER_BOOTSTRAP-SERVERS: kafka:29092
+      SPRING_KAFKA_PRODUCER_KEY-SERIALIZER: org.apache.kafka.common.serialization.StringSerializer
+      SPRING_KAFKA_PRODUCER_VALUE-SERIALIZER: org.springframework.kafka.support.serializer.JsonSerializer
+      SOCIAL_RATING_SEED: ${SOCIAL_RATING_SEED}
+      SOCIAL_RATING_TOPIC: "social-rating-topic"
+
+  score-rating-calculator:
+    container_name: score-rating-calculator
+    build:
+      context: score-rating-calculator
+      dockerfile: Dockerfile
+    image: score-rating-calculator:latest
+    ports:
+      - 8090:8080
+    depends_on:
+      - kafka
+      - redis
+    networks:
+      - broker-kafka
+      - broker-redis
+    environment:
+      SPRING_KAFKA_CONSUMER_BOOTSTRAP-SERVERS: kafka:29092
+      SPRING_KAFKA_CONSUMER_GROUP-ID: group_id
+      SPRING_KAFKA_CONSUMER_AUTO-OFFSET-RESET: earliest
+      SPRING_KAFKA_CONSUMER_KEY-DESERIALIZER: org.apache.kafka.common.serialization.StringDeserializer
+      SPRING_KAFKA_CONSUMER_VALUE-DESERIALIZER: org.springframework.kafka.support.serializer.JsonDeserializer
+      SOCIAL_RATING_TOPIC: "social-rating-topic"
+      SPRING_REDIS_DATABASE: 0
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: "SocialRating!"
+      SPRING_REDIS_TIMEOUT: 60000
+
+networks:
+  broker-kafka:
+    driver: bridge
+  broker-redis:
+    driver: bridge

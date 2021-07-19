@@ -1,0 +1,37 @@
+{
+	"info": {
+		"_postman_id": "382529e9-c4f7-4922-99b5-c9e7e8dc2440",
+		"name": "poc",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "http://localhost:8080/social-rating",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\"first_name\": \"Rodrigo\",\n\"last_name\": \"Kossmann\",\n\"age\": 32\n}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/social-rating",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"social-rating"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
